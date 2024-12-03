@@ -1,39 +1,9 @@
+#include "../common/fileparse.hh"
 #include <algorithm>
-#include <cstdio>
-#include <filesystem>
 #include <iostream>
 #include <numeric>
 #include <ranges>
-#include <string>
 #include <vector>
-
-std::string read_file(const char *filename) {
-	size_t filesize = std::filesystem::file_size(filename);
-
-	auto fil = std::fopen(filename, "r");
-	std::string input;
-	input.resize(filesize);
-	std::fread(input.data(), sizeof(char), filesize, fil);
-	std::fclose(fil);
-
-	return input;
-}
-
-int str_to_int(std::string_view str) {
-	return stoi(std::string(str));
-}
-
-void parse(std::string_view data, std::vector<int> *a, std::vector<int> *b) {
-	while (data.length() > 0) {
-		auto astr = data.substr(0, 5);
-		a->push_back(str_to_int(astr));
-
-		auto bstr = data.substr(8, 5);
-		b->push_back(str_to_int(bstr));
-
-		data = data.substr(14);
-	}
-}
 
 int count_occurrences(std::vector<int> const &vec, int target) {
 	// Find the first occurence
@@ -50,12 +20,11 @@ int count_occurrences(std::vector<int> const &vec, int target) {
 }
 
 int main(int argc, char *argv[]) {
-	auto input = read_file(argv[1]);
+	auto rows = parse_rows(argv[1]);
+	auto cols = transpose_rows_to_cols(rows);
 
-	std::vector<int> lista;
-	std::vector<int> listb;
-
-	parse(input, &lista, &listb);
+	auto &lista = cols[0];
+	auto &listb = cols[1];
 
 	std::ranges::sort(lista);
 	std::ranges::sort(listb);
@@ -74,4 +43,7 @@ int main(int argc, char *argv[]) {
 
 	std::cout << "Part 2 (similarity): " << similarity << "\n";
 	return 0;
+
+	//Part 1 (sum of differences): 1341714
+	//Part 2 (similarity): 27384707
 }
