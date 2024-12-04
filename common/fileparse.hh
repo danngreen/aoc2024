@@ -1,20 +1,16 @@
-#include <algorithm>
-#include <cstdio>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
-#include <numeric>
 #include <ranges>
 #include <string>
 #include <vector>
-
-#include <fstream>
 
 inline int str_to_int(std::string_view str) {
 	return stoi(std::string(str));
 }
 
 inline std::vector<std::vector<int>> parse_rows(std::string_view filename) {
-	std::ifstream file(filename);
+	std::ifstream file{std::string(filename)};
 
 	std::vector<std::vector<int>> result;
 
