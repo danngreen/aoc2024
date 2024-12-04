@@ -6,11 +6,20 @@
 bool row_is_safe(std::span<int> vals) {
 	auto diffs = vals | std::views::adjacent_transform<2>([](auto &&x, auto &&y) { return x - y; });
 
-	auto passes = std::ranges::fold_left(
-		diffs, 0, [](int sum, int x) { return sum + (std::abs(x) <= 3 && std::abs(x) >= 1) ? 1 : 0; });
-	// auto passes = diffs | std::views::acc([](auto &&x) { return std::abs(x) <= 3 && std::abs(x) >= 1; });
+	for (auto i : vals)
+		std::cout << i << " ";
+	std::cout << " => ";
+	for (auto i : diffs)
+		std::cout << i << " ";
 
-	return passes == vals.size();
+	auto passes = std::ranges::fold_left(diffs, 0, [](int sum, int x) {
+		int is_ok = (std::abs(x) <= 3 && std::abs(x) >= 1);
+		return sum + (is_ok ? 1 : 0);
+	});
+
+	std::cout << " => " << passes << " = " << (passes == vals.size() - 1) << "\n";
+
+	return passes == vals.size() - 1;
 }
 
 int main(int argc, char *argv[]) {
@@ -22,10 +31,7 @@ int main(int argc, char *argv[]) {
 	for (auto &row : rows) {
 		auto safe = row_is_safe(row);
 		num_safe += safe ? 1 : 0;
-
-		for (auto i : row)
-			std::cout << i << " ";
-		std::cout << " => " << safe << "\n";
 	}
+	std::cout << "Total Safe: " << num_safe << "\n";
 	return 0;
 }
