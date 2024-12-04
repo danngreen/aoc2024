@@ -1,0 +1,17 @@
+"convert all mul(X,Y) to (X*Y)+ and get rid of the rest
+:%s/.\{-}mul(\(\d\+\),\(\d\+\))/(\1*\2)+/g
+
+" Join all lines
+:%j
+
+" Yank the current line (the math expression), except for the last part after the final +
+^v$F+hy
+
+" Open a new line in insert mode
+o
+
+" Put the yanked formula into vim's built-in math expression solver
+<C-R>=<C-R>"<CR><Esc>
+
+" Copy the answer to the clipboard (then paste it into the webpage)
+:yank+"
