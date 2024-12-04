@@ -31,11 +31,24 @@ inline std::vector<std::vector<int>> parse_rows(std::string_view filename) {
 	return result;
 }
 
-inline std::vector<std::vector<int>> transpose_rows_to_cols(std::vector<std::vector<int>> const &rows) {
+inline std::vector<std::string> parse_lines(std::string_view filename) {
+	std::ifstream file{std::string(filename)};
+
+	std::vector<std::string> lines;
+
+	for (std::string line; std::getline(file, line);) {
+		lines.push_back(line);
+	}
+
+	return lines;
+}
+
+template<typename T>
+inline std::vector<T> transpose_rows_to_cols(std::vector<T> const &rows) {
 	auto num_rows = rows.size();
 	auto num_cols = rows.front().size();
 
-	std::vector<std::vector<int>> cols;
+	std::vector<T> cols;
 	cols.resize(num_cols);
 
 	for (auto &row : rows) {
