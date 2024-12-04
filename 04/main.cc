@@ -1,8 +1,5 @@
 #include "../common/fileparse.hh"
-#include <algorithm>
 #include <iostream>
-#include <numeric>
-#include <ranges>
 #include <vector>
 
 constexpr unsigned count_found(std::string_view haystack, std::string_view needle) {
@@ -17,17 +14,6 @@ constexpr unsigned count_found(std::string_view haystack, std::string_view needl
 	}
 	return num_found;
 }
-static_assert(std::string_view{"XMASX"}.find("XMAS", 0) == 0);
-static_assert(std::string_view{"XMAS"}.length() == 4);
-static_assert(std::string_view{"XMASX"}.find("XMAS", 4) == std::string::npos);
-
-static_assert(count_found("XMA", "XMAS") == 0);
-static_assert(count_found("XMASX", "XMAS") == 1);
-static_assert(count_found("XMASXMAS", "XMAS") == 2);
-
-static_assert(count_found("XMMASSSMAMASXMAMASXMAS", "XMAS") == 1);
-static_assert(count_found("XMMASSSMAXMASXMAMASXMAS", "XMAS") == 2);
-static_assert(count_found("XMASXMASXMAS", "XMAS") == 3);
 
 constexpr std::string shift_and_pad(std::string const &str, unsigned shift, size_t ending_size, char padchar = ' ') {
 	size_t left_pad = shift;
@@ -37,12 +23,6 @@ constexpr std::string shift_and_pad(std::string const &str, unsigned shift, size
 	std::string right(right_pad, padchar);
 	return left + str + right;
 }
-
-static_assert(shift_and_pad("ABC", 0, 3, ' ') == "ABC");
-static_assert(shift_and_pad("ABC", 0, 6, ' ') == "ABC   ");
-static_assert(shift_and_pad("ABC", 1, 6, ' ') == " ABC  ");
-static_assert(shift_and_pad("ABC", 2, 6, ' ') == "  ABC ");
-static_assert(shift_and_pad("ABC", 3, 6, ' ') == "   ABC");
 
 std::pair<int, int> find_in_rows(auto &&rows) {
 	auto num_right = 0;
@@ -56,7 +36,7 @@ std::pair<int, int> find_in_rows(auto &&rows) {
 	return {num_right, num_left};
 }
 
-unsigned find_xs(std::vector<std::string> grid) {
+constexpr unsigned find_xs(std::vector<std::string> grid) {
 
 	auto numrows = grid.size();
 	auto numcols = grid.front().length();
@@ -69,22 +49,10 @@ unsigned find_xs(std::vector<std::string> grid) {
 				//M M  M S  S S  S M
 				// A    A    A    A
 				//S S  M S  M M  S M
-				if (grid[y - 1][x - 1] == 'M' && grid[y + 1][x + 1] == 'S') {
-					if (grid[y - 1][x + 1] == 'M' && grid[y + 1][x - 1] == 'S') {
-						found++;
-					}
-					if (grid[y - 1][x + 1] == 'S' && grid[y + 1][x - 1] == 'M') {
-						found++;
-					}
-				}
-				if (grid[y - 1][x - 1] == 'S' && grid[y + 1][x + 1] == 'M') {
-					if (grid[y - 1][x + 1] == 'M' && grid[y + 1][x - 1] == 'S') {
-						found++;
-					}
-					if (grid[y - 1][x + 1] == 'S' && grid[y + 1][x - 1] == 'M') {
-						found++;
-					}
-				}
+				std::string lr = {grid[y - 1][x - 1], grid[y + 1][x + 1]};
+				std::string rl = {grid[y + 1][x - 1], grid[y - 1][x + 1]};
+				if ((lr == "MS" || lr == "SM") && (rl == "MS" || rl == "SM"))
+					found++;
 			}
 		}
 	}
@@ -126,6 +94,25 @@ int main(int argc, char *argv[]) {
 	// brute force find X-MAS:
 	auto num_xs = find_xs(rows);
 	std::cout << "Part 2: total X-MAS found: " << num_xs << "\n";
+	//1902
 
 	return 0;
 }
+
+static_assert(std::string_view{"XMASX"}.find("XMAS", 0) == 0);
+static_assert(std::string_view{"XMAS"}.length() == 4);
+static_assert(std::string_view{"XMASX"}.find("XMAS", 4) == std::string::npos);
+
+static_assert(count_found("XMA", "XMAS") == 0);
+static_assert(count_found("XMASX", "XMAS") == 1);
+static_assert(count_found("XMASXMAS", "XMAS") == 2);
+
+static_assert(count_found("XMMASSSMAMASXMAMASXMAS", "XMAS") == 1);
+static_assert(count_found("XMMASSSMAXMASXMAMASXMAS", "XMAS") == 2);
+static_assert(count_found("XMASXMASXMAS", "XMAS") == 3);
+
+static_assert(shift_and_pad("ABC", 0, 3, ' ') == "ABC");
+static_assert(shift_and_pad("ABC", 0, 6, ' ') == "ABC   ");
+static_assert(shift_and_pad("ABC", 1, 6, ' ') == " ABC  ");
+static_assert(shift_and_pad("ABC", 2, 6, ' ') == "  ABC ");
+static_assert(shift_and_pad("ABC", 3, 6, ' ') == "   ABC");
