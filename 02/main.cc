@@ -60,12 +60,34 @@ static_assert(row_is_safe(std::array{1, 3, 2, 4, 5}) == false);
 static_assert(row_is_safe(std::array{9, 7, 6, 2, 1}) == false);
 static_assert(row_is_safe(std::array{7, 6, 4, 2, 1}));
 
+// Allow for one value to be dropped, and it's safe
+constexpr bool row_is_mostly_safe(std::vector<int> const &row) {
+	if (row_is_safe(row))
+		return true;
+
+	for (auto i = 0u; i < row.size(); i++) {
+		std::vector<int> row_minus_one = row;
+		row_minus_one.erase(std::next(row_minus_one.begin(), i));
+		if (row_is_safe(row_minus_one))
+			return true;
+	}
+
+	return false;
+}
+
 int main(int argc, char *argv[]) {
 	auto rows = parse_rows(argv[1]);
 
 	size_t num_safe = std::ranges::count_if(rows, [](auto &row) { return row_is_safe(row); });
 
-	std::cout << "Total Safe: " << num_safe << "\n";
+	std::cout << "Part 1: Total Safe: " << num_safe << "\n";
 	// 407
+
+	// Part 2:
+	// Can sum any consecutive diffs
+	size_t num_mostly_safe = std::ranges::count_if(rows, [](auto &row) { return row_is_mostly_safe(row); });
+
+	std::cout << "Part 2: Total Mostly Safe: " << num_mostly_safe << "\n";
+
 	return 0;
 }
