@@ -1,4 +1,5 @@
 #include "../common/fileparse.hh"
+#include <algorithm>
 #include <iostream>
 #include <numeric>
 #include <vector>
@@ -19,27 +20,6 @@ constexpr Rule parse_rule(std::string_view line) {
 		return {0, 0};
 }
 
-constexpr std::vector<Rule> parse_rules(std::span<std::string> const &lines) {
-	std::vector<Rule> rules;
-
-	for (auto &line : lines) {
-		if (auto rule = parse_rule(line); rule.first != 0) {
-			rules.push_back(rule);
-		}
-	}
-
-	return rules;
-}
-
-constexpr std::string_view trim_spaces(std::string_view str) {
-	size_t start = str.find_first_not_of(" ");
-	size_t end = str.find_last_not_of(" ");
-	if (start != std::string::npos && end != std::string::npos) {
-		return str.substr(start, end - start + 1);
-	}
-	return "";
-}
-
 using Updates = std::vector<std::vector<int>>;
 using Rules = std::vector<Rule>;
 
@@ -57,8 +37,7 @@ std::pair<Updates, Rules> parse(std::string_view filename) {
 			auto pages = line											  //
 					   | std::ranges::views::split(',')					  // split on spaces
 					   | std::ranges::views::transform([](auto &&range) { // convert to int
-							 auto trimmed = trim_spaces({range.begin(), range.end()});
-							 return str_to_int(trimmed);
+							 return to_int({range.begin(), range.end()});
 						 });
 
 			if (!pages.empty()) {
@@ -71,31 +50,41 @@ std::pair<Updates, Rules> parse(std::string_view filename) {
 }
 
 bool check_update(std::vector<int> const &update, std::vector<Rule> const &rules) {
-	for (unsigned idx = 0; auto page : update) {
+	for (auto rule : rules) {
+		auto pos_first = std::ranges::find(update, rule.first);
+		auto pos_second = std::ranges::find(update, rule.second);
 
-		for (auto &rule : rules) {
-			std::cout << rule.first << "|" << rule.second << " ";
+		// there is a rule for this update, and we violate it: fail
+		if (pos_first != update.end() && pos_second != update.end() && pos_first > pos_second) {
+			return false;
+		}
+	}
 
-			if (page == rule.first) {
-				// fail if rule.second occurs in update BEFORE idx
-				for (unsigned j = 0; j < idx; j++) {
-					if (update[j] == rule.second)
-						return false;
-				}
-				// ??? what's wrong with this?
-				// if (auto pos = std::find(update.begin(), std::next(update.begin(), idx), rule.second);
-				// 	pos != update.end())
+	return true;
+}
 
-			} else if (page == rule.second) {
-				// fail if rule.first occurs in update AFTER idx
-				if (std::find(update.begin() + idx + 1, update.end(), rule.first) != update.end()) {
-					return false;
-				}
+bool fix_update(std::vector<int> &update, std::vector<Rule> const &rules) {
+	bool did_sort = false;
+
+	// repeatedly apply rules until no more sorting can be done
+	while (true) {
+		bool fully_sorted = true;
+		for (auto rule : rules) {
+			auto pos_first = std::ranges::find(update, rule.first);
+			auto pos_second = std::ranges::find(update, rule.second);
+
+			// there is a rule for this update, and we violate it: swap and tag this for inclusion in the answer
+			if (pos_first != update.end() && pos_second != update.end() && pos_first > pos_second) {
+				std::swap(*pos_first, *pos_second);
+				fully_sorted = false;
+				did_sort = true;
 			}
 		}
-		idx++;
+		if (fully_sorted)
+			break;
 	}
-	return true;
+
+	return did_sort;
 }
 
 int main(int argc, char *argv[]) {
@@ -109,26 +98,18 @@ int main(int argc, char *argv[]) {
 	});
 
 	std::cout << "Part 1: sum of middle correct updates: " << sum << "\n";
+	//5166
 
-	// for (auto &rule : rules)
-	// 	std::cout << rule.first << "|" << rule.second << "\n";
+	auto sum2 = std::accumulate(updates.begin(), updates.end(), 0u, [&rules](unsigned sum, auto &update) {
+		return sum + (fix_update(update, rules) ? update[update.size() / 2] : 0);
+	});
 
-	// for (auto &update : updates) {
-	// 	for (auto page : update)
-	// 		std::cout << page << ", ";
-	// 	std::cout << "\n";
-	// }
+	std::cout << "Part 2: sum of middle incorrect updates after sorting: " << sum2 << "\n";
+	//4679
+
 	return 0;
 }
 
-////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////
 
@@ -136,49 +117,3 @@ static_assert(parse_rule("78|53").first == 78);
 static_assert(parse_rule("78|53").second == 53);
 static_assert(parse_rule("78|53\n").first == 78);
 static_assert(parse_rule("78|53\n").second == 53);
-
-constexpr std::pair<int, std::string_view> pop_page(std::string_view line) {
-	auto split = line.find(',');
-	std::string_view num;
-	if (split == std::string_view::npos) {
-		num = line;
-		line = "";
-	} else {
-		num = line.substr(0, split);
-		line = trim_spaces(line.substr(split + 1));
-	}
-	return {to_int(num), line};
-}
-
-constexpr std::vector<int> parse_update(std::string_view line) {
-	std::vector<int> pages;
-	auto pos = 0;
-
-	while (line != "") {
-		auto [page, remaining] = pop_page(line);
-		line = remaining;
-		pages.push_back(page);
-	}
-
-	return pages;
-}
-
-constexpr std::vector<std::vector<int>> parse_updates(std::span<std::string> const &lines) {
-	std::vector<std::vector<int>> updates;
-
-	for (auto &line : lines) {
-		if (line.find(',') != std::string::npos)
-			updates.push_back(parse_update(line));
-	}
-
-	return updates;
-}
-
-static_assert(pop_page("73, 44, 20").first == 73);
-static_assert(pop_page("73, 44, 20").second == "44, 20");
-static_assert(pop_page("44, 20").first == 44);
-static_assert(pop_page("44, 20").second == "20");
-static_assert(pop_page("20").first == 20);
-static_assert(pop_page("20").second == "");
-
-static_assert(parse_update("73, 44, 30") == std::vector<int>{73, 44, 30});
