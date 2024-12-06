@@ -51,81 +51,37 @@ Guard find_guard(std::vector<std::string> const &grid) {
 	return {};
 }
 
-//actually `obstacles` is a vec of places where we would rotate if there was an obstacle in the next spot
-std::vector<std::pair<int, int>> obstacles;
-
 bool in_bounds(int x, int y, auto const &grid) {
 	auto in_bounds_x = std::clamp<int>(x, 0, grid.front().size() - 1) == x;
 	auto in_bounds_y = std::clamp<int>(y, 0, grid.size() - 1) == y;
 	return in_bounds_y && in_bounds_x;
 }
 
-bool obstacle_would_loop(std::vector<std::string> grid, Guard guard);
+enum class Status { Continue, Looped, Exited };
 
-bool step(std::vector<std::string> &grid, Guard &guard, bool check_obs = true) {
+Status step(std::vector<std::string> &grid, Guard &guard) {
 
 	auto [test_x, test_y] = next(guard);
 
 	if (!in_bounds(test_x, test_y, grid)) {
 		grid[guard.y][guard.x] = guard.dir;
-		return false;
+		return Status::Exited;
+	}
+
+	if (grid[test_y][test_x] == guard.dir) {
+		return Status::Looped;
 	}
 
 	if (grid[test_y][test_x] != '#') {
-		if (check_obs) {
-			Guard test_guard{test_x, test_y, rotate(guard.dir)};
-			if (obstacle_would_loop(grid, test_guard)) {
-				auto [obstx, obsty] = next(Guard{test_x, test_y, guard.dir});
-				obstacles.push_back({obstx, obsty});
-				std::cout << "______________________" << "\n";
-				std::cout << obstx << " " << obsty << "\n";
-				auto c = grid[obsty][obstx];
-				grid[obsty][obstx] = 'O';
-				print_grid(grid);
-				grid[obsty][obstx] = c;
-			}
-		}
 		guard.x = test_x;
 		guard.y = test_y;
 		grid[guard.y][guard.x] = guard.dir;
 	} else {
 		guard.dir = rotate(guard.dir);
-		grid[guard.y][guard.x] = guard.dir;
+		// grid[guard.y][guard.x] = guard.dir;
 	}
 
-	return true;
-}
-
-bool obstacle_would_loop(std::vector<std::string> grid, Guard guard) {
-	grid[guard.y][guard.x] = guard.dir;
-
-	std::cout << "############################" << "\n";
-	while (true) {
-		print_grid(grid);
-		auto [dx, dy] = next(guard.dir);
-		auto test_x = guard.x + dx;
-		auto test_y = guard.y + dy;
-
-		if (!in_bounds(test_x, test_y, grid)) {
-			std::cout << "No loop\n";
-			return false;
-		}
-
-		if (grid[test_y][test_x] == guard.dir) {
-			std::cout << "Loop\n";
-			return true;
-		}
-
-		if (grid[test_y][test_x] != '#') {
-			guard.x = test_x;
-			guard.y = test_y;
-			grid[guard.y][guard.x] = guard.dir;
-		} else {
-			guard.dir = rotate(guard.dir);
-		}
-	}
-
-	return false;
+	return Status::Continue;
 }
 
 size_t count_xs(std::vector<std::string> const &grid) {
@@ -142,20 +98,52 @@ size_t count_xs(std::vector<std::string> const &grid) {
 // if it's a place we've been and were going in that new rotated dir, then our current next step is a valid obstacle.
 
 int main(int argc, char *argv[]) {
-	auto grid = parse_lines(argv[1]);
-	auto guard = find_guard(grid);
+	const auto grid = parse_lines(argv[1]);
+	const auto guard = find_guard(grid);
 
-	while (step(grid, guard)) {
-		// print_grid(grid);
+	auto grid1 = grid;
+	auto guard1 = guard;
+	while (step(grid1, guard1) == Status::Continue) {
+		// print_grid(grid1);
 	}
 
-	auto num_xs = count_xs(grid);
+	auto num_xs = count_xs(grid1);
 
 	std::cout << "Part 1: " << num_xs << "\n";
 	//4982
 
-	std::cout << "Part 2: " << obstacles.size() << "\n";
-	//<1687
+	// Naive method: try putting an obstacle on each space and see
+	// if we loop or exit
+	unsigned looped = 0;
+	for (unsigned x = 0; x < grid.front().size(); x++) {
+		for (unsigned y = 0; y < grid.size(); y++) {
+			//rule: can't place obstacle on guard init position
+			if (x == guard.x && y == guard.y)
+				continue;
+
+			//Don't bother if an obstacle is already at the position
+			if (grid[y][x] == '#')
+				continue;
+
+			auto grid2 = grid;
+			auto guard2 = guard;
+
+			grid2[y][x] = '#';
+
+			while (true) {
+				if (auto status = step(grid2, guard2); status == Status::Looped) {
+					looped++;
+					break;
+
+				} else if (status == Status::Exited) {
+					break;
+				}
+			}
+		}
+	}
+
+	std::cout << "Part 2: " << looped << "\n";
+	//1663
 
 	return 0;
 }
