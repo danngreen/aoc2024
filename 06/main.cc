@@ -1,4 +1,5 @@
 #include "../common/fileparse.hh"
+#include <algorithm>
 #include <iostream>
 #include <numeric>
 
@@ -57,6 +58,10 @@ bool in_bounds(int x, int y, auto const &grid) {
 	return in_bounds_y && in_bounds_x;
 }
 
+bool is_path_marker(char x) {
+	return Dirs.find_first_of(x) != std::string_view::npos;
+}
+
 enum class Status { Continue, Looped, Exited };
 
 Status step(std::vector<std::string> &grid, Guard &guard) {
@@ -84,49 +89,30 @@ Status step(std::vector<std::string> &grid, Guard &guard) {
 	return Status::Continue;
 }
 
-size_t count_xs(std::vector<std::string> const &grid) {
+size_t count_path_markers(std::vector<std::string> const &grid) {
 	return std::accumulate(grid.begin(), grid.end(), 0u, [](size_t sum, std::string const &line) {
-		return sum										 //
-			 + std::count(line.begin(), line.end(), '^') //
-			 + std::count(line.begin(), line.end(), '<') //
-			 + std::count(line.begin(), line.end(), '>') //
-			 + std::count(line.begin(), line.end(), 'v');
+		return sum + std::ranges::count_if(line, [](char x) { return is_path_marker(x); });
 	});
 }
 
-// as we go, check the next position as if we had rotated in our current position and then stepped
-// if it's a place we've been and were going in that new rotated dir, then our current next step is a valid obstacle.
-
-int main(int argc, char *argv[]) {
-	const auto grid = parse_lines(argv[1]);
-	const auto guard = find_guard(grid);
-
-	auto grid1 = grid;
-	auto guard1 = guard;
-	while (step(grid1, guard1) == Status::Continue) {
-		// print_grid(grid1);
-	}
-
-	auto num_xs = count_xs(grid1);
-
-	std::cout << "Part 1: " << num_xs << "\n";
-	//4982
-
+int count_loops(std::vector<std::string> const &init_grid,
+				Guard const init_guard,
+				std::vector<std::string> const path_grid) {
 	// Naive method: try putting an obstacle on each space and see
 	// if we loop or exit
 	unsigned looped = 0;
-	for (unsigned x = 0; x < grid.front().size(); x++) {
-		for (unsigned y = 0; y < grid.size(); y++) {
-			//rule: can't place obstacle on guard init position
-			if (x == guard.x && y == guard.y)
+	for (unsigned x = 0; x < init_grid.front().size(); x++) {
+		for (unsigned y = 0; y < init_grid.size(); y++) {
+			// rule: can't place obstacle on guard init position
+			if (x == init_guard.x && y == init_guard.y)
 				continue;
 
-			//Don't bother if an obstacle is already at the position
-			if (grid[y][x] == '#')
+			// only check path followed in part 1
+			if (!is_path_marker(path_grid[y][x]))
 				continue;
 
-			auto grid2 = grid;
-			auto guard2 = guard;
+			auto grid2 = init_grid;
+			auto guard2 = init_guard;
 
 			grid2[y][x] = '#';
 
@@ -142,7 +128,27 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
-	std::cout << "Part 2: " << looped << "\n";
+	return looped;
+}
+
+int main(int argc, char *argv[]) {
+	const auto grid = parse_lines(argv[1]);
+	const auto guard = find_guard(grid);
+
+	auto grid1 = grid;
+	auto guard1 = guard;
+	while (step(grid1, guard1) == Status::Continue) {
+		// print_grid(grid1);
+	}
+
+	auto num_xs = count_path_markers(grid1);
+
+	std::cout << "Part 1: " << num_xs << "\n";
+	//4982
+
+	auto num_loops = count_loops(grid, guard, grid1);
+
+	std::cout << "Part 2: " << num_loops << "\n";
 	//1663
 
 	return 0;
