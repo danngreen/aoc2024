@@ -1,8 +1,9 @@
-#include "../common/fileparse.hh"
 #include <cmath>
+#include <fstream>
 #include <iostream>
 #include <numeric>
 #include <ranges>
+#include <vector>
 
 enum Op { Plus = 0, Mult = 1, Concat = 2, Unknown };
 
@@ -23,8 +24,8 @@ long calc(long a, long b, Op op) {
 	else if (op == Op::Concat) {
 		auto str = std::to_string(a) + std::to_string(b);
 		return stol(str);
-	} else
-		return 0; //error
+	}
+	return 0; //error
 }
 
 constexpr bool check(Equation eq) {
@@ -40,10 +41,12 @@ template<size_t N>
 bool find_ops(Equation &eq) {
 	eq.ops.resize(eq.nums.size());
 
-	for (long mask = 0; mask < std::pow(N, eq.nums.size()); mask++) {
-		for (long op_idx = 0; auto &op : eq.ops) {
-			op = Op(long(mask / (long)std::pow(N, op_idx)) % N);
-			op_idx++;
+	// base-N "bitmask" to find all combinations
+	long num_combos = std::pow(N, eq.nums.size());
+	for (long combo = 0; combo < num_combos; combo++) {
+		for (long shift = 1; auto &op : eq.ops) {
+			op = Op(long(combo / shift) % N);
+			shift *= N;
 		}
 		if (check(eq))
 			return true;
@@ -59,24 +62,19 @@ std::vector<Equation> parse(std::string_view filename) {
 
 	for (std::string line; std::getline(file, line);) {
 		Equation eq;
+
 		auto colpos = line.find(':');
 		eq.answer = stol(line.substr(0, colpos));
 		line = line.substr(colpos + 2);
 
-		auto pos = line.find(' ');
-		eq.initial = stol(line.substr(0, pos));
-		line = line.substr(pos + 1);
+		auto nums = line											 //
+				  | std::ranges::views::split(' ')					 // split on spaces
+				  | std::ranges::views::transform([](auto &&range) { // string->long
+						return stol(std::string{range.begin(), range.end()});
+					});
 
-		while (true) {
-			pos = line.find(' ');
-			eq.nums.push_back(stol(line.substr(0, pos)));
-			line = line.substr(pos + 1);
-
-			if (pos == std::string_view::npos)
-				break;
-
-			eq.ops.push_back(Op::Unknown);
-		}
+		eq.initial = nums.front();
+		eq.nums.append_range(nums | std::views::drop(1));
 
 		eqs.push_back(eq);
 	}
@@ -85,29 +83,17 @@ std::vector<Equation> parse(std::string_view filename) {
 }
 
 int main(int argc, char *argv[]) {
-
 	auto eqs = parse(argv[1]);
 
-	// ???
-	// long good_sum = std::accumulate(
-	// 	eqs.begin(), eqs.end(), 0l, [](long sum, Equation &eq) { return sum + (find_ops(eq) ? eq.answer); });
-
-	long sum = 0;
-	for (auto &eq : eqs) {
-		if (find_ops<2>(eq)) {
-			sum += eq.answer;
-		}
-	}
+	long sum = std::accumulate(
+		eqs.begin(), eqs.end(), 0l, [](long sum, Equation &eq) { return sum + (find_ops<2>(eq) ? eq.answer : 0); });
 
 	std::cout << "Part 1: " << sum << "\n";
 	//6083020304036
 
-	long sum2 = 0;
-	for (auto &eq : eqs) {
-		if (find_ops<3>(eq)) {
-			sum2 += eq.answer;
-		}
-	}
+	long sum2 = std::accumulate(
+		eqs.begin(), eqs.end(), 0l, [](long sum, Equation &eq) { return sum + (find_ops<3>(eq) ? eq.answer : 0); });
+
 	std::cout << "Part 2: " << sum2 << "\n";
 	//59002246504791
 
