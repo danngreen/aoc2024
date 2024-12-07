@@ -1,9 +1,10 @@
 #include "../common/fileparse.hh"
+#include <cmath>
 #include <iostream>
 #include <numeric>
 #include <ranges>
 
-enum Op { Unknown, Plus, Mult, Concat };
+enum Op { Plus = 0, Mult = 1, Concat = 2, Unknown };
 
 struct Equation {
 	long answer{};
@@ -19,32 +20,30 @@ long calc(long a, long b, Op op) {
 		return a * b;
 	else if (op == Op::Plus)
 		return a + b;
-	else if (op == Op::Concat)
-		return a + b;
-	else
+	else if (op == Op::Concat) {
+		auto str = std::to_string(a) + std::to_string(b);
+		return stol(str);
+	} else
 		return 0; //error
 }
 
-constexpr long solve(Equation eq) {
+constexpr bool check(Equation eq) {
 	long ans = eq.initial;
 	for (auto [num, op] : std::views::zip(eq.nums, eq.ops)) {
 		ans = calc(ans, num, op);
 	}
-	return ans;
+	return ans == eq.answer;
 }
 
-constexpr bool check(Equation eq) {
-	return solve(eq) == eq.answer;
-}
-
-// returns if can be solved
+// returns true if can be solved
+template<size_t N>
 bool find_ops(Equation &eq) {
 	eq.ops.resize(eq.nums.size());
 
-	for (unsigned mask = 0; mask < (1 << eq.nums.size()); mask++) {
-		for (unsigned bit = 0; auto &op : eq.ops) {
-			op = mask & (1 << bit) ? Op::Plus : Op::Mult;
-			bit++;
+	for (long mask = 0; mask < std::pow(N, eq.nums.size()); mask++) {
+		for (long op_idx = 0; auto &op : eq.ops) {
+			op = Op(long(mask / (long)std::pow(N, op_idx)) % N);
+			op_idx++;
 		}
 		if (check(eq))
 			return true;
@@ -52,8 +51,6 @@ bool find_ops(Equation &eq) {
 
 	return false;
 }
-
-// static_assert(solve({42, 2, {40}, {Op::Plus}}) == 42);
 
 std::vector<Equation> parse(std::string_view filename) {
 	std::vector<Equation> eqs;
@@ -63,11 +60,7 @@ std::vector<Equation> parse(std::string_view filename) {
 	for (std::string line; std::getline(file, line);) {
 		Equation eq;
 		auto colpos = line.find(':');
-		try {
-			eq.answer = stol(line.substr(0, colpos));
-		} catch (std::exception &e) {
-			std::cout << line.substr(0, colpos) << " out of range\n";
-		}
+		eq.answer = stol(line.substr(0, colpos));
 		line = line.substr(colpos + 2);
 
 		auto pos = line.find(' ');
@@ -101,8 +94,7 @@ int main(int argc, char *argv[]) {
 
 	long sum = 0;
 	for (auto &eq : eqs) {
-		// eq.print();
-		if (find_ops(eq)) {
+		if (find_ops<2>(eq)) {
 			sum += eq.answer;
 		}
 	}
@@ -110,7 +102,14 @@ int main(int argc, char *argv[]) {
 	std::cout << "Part 1: " << sum << "\n";
 	//6083020304036
 
-	// std::cout << "Part 2: " << num_loops << "\n";
+	long sum2 = 0;
+	for (auto &eq : eqs) {
+		if (find_ops<3>(eq)) {
+			sum2 += eq.answer;
+		}
+	}
+	std::cout << "Part 2: " << sum2 << "\n";
+	//59002246504791
 
 	return 0;
 }
