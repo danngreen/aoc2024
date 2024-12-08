@@ -29,16 +29,8 @@ std::vector<Pos> calc_antis(Pos a, Pos b, bool limit_antis) {
 		if (limit_antis)
 			break;
 	}
-	anti = b;
-	while (in_bounds(anti)) {
-		anti = {anti.x - diff.x, anti.y - diff.y};
-		p.push_back(anti);
-		if (limit_antis)
-			break;
-	}
 	if (!limit_antis) {
 		p.push_back(a);
-		p.push_back(b);
 	}
 	return p;
 }
@@ -69,22 +61,19 @@ auto parse(std::string_view filename) {
 }
 
 void count_validnodes(std::span<Pos> poss, std::set<Pos> &antinodes, bool limit_antis) {
-	if (poss.size() < 2)
-		return;
+	for (auto a : poss) {
+		for (auto b : poss) {
+			if (a == b)
+				continue;
+			auto antis = calc_antis(a, b, limit_antis);
 
-	int cnt = 0;
-	auto a = poss.front();
-	auto check = poss.subspan(1);
-	for (auto b : check) {
-		auto antis = calc_antis(a, b, limit_antis);
-
-		for (auto aa : antis) {
-			if (in_bounds(aa)) {
-				antinodes.insert(aa);
+			for (auto aa : antis) {
+				if (in_bounds(aa)) {
+					antinodes.insert(aa);
+				}
 			}
 		}
 	}
-	count_validnodes(check, antinodes, limit_antis);
 }
 
 int main(int argc, char *argv[]) {
