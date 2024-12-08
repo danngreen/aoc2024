@@ -9,19 +9,42 @@
 struct Pos {
 	int x;
 	int y;
-	bool operator<(Pos const &other) const {
-		return x < other.x || (x == other.x && y < other.y);
-	}
+	auto operator<=>(Pos const &other) const = default;
+	// bool operator<(Pos const &other) const {
+	// 	return x < other.x || (x == other.x && y < other.y);
+	// }
 };
 
 Pos MAX;
 
-std::pair<Pos, Pos> calc_antis(Pos a, Pos b) {
-	return {Pos{2 * b.x - a.x, 2 * b.y - a.y}, Pos{2 * a.x - b.x, 2 * a.y - b.y}};
-}
+void print_grid(std::vector<Pos> antinodes, std::map<char, std::vector<Pos>> map);
 
 bool in_bounds(Pos a) {
 	return a.x >= 0 && a.x < MAX.x && a.y >= 0 && a.y < MAX.y;
+}
+
+std::vector<Pos> calc_antis(Pos a, Pos b, bool limit_antis) {
+	std::vector<Pos> p;
+	auto diff = Pos{a.x - b.x, a.y - b.y};
+	auto anti = a;
+	while (in_bounds(anti)) {
+		anti = {anti.x + diff.x, anti.y + diff.y};
+		p.push_back(anti);
+		if (limit_antis)
+			break;
+	}
+	anti = b;
+	while (in_bounds(anti)) {
+		anti = {anti.x - diff.x, anti.y - diff.y};
+		p.push_back(anti);
+		if (limit_antis)
+			break;
+	}
+	if (!limit_antis) {
+		p.push_back(a);
+		p.push_back(b);
+	}
+	return p;
 }
 
 auto parse(std::string_view filename) {
@@ -49,7 +72,7 @@ auto parse(std::string_view filename) {
 	return m;
 }
 
-void count_validnodes(std::span<Pos> poss, std::vector<Pos> &antinodes) {
+void count_validnodes(std::span<Pos> poss, std::vector<Pos> &antinodes, bool limit_antis) {
 	// void count_validnodes(std::span<Pos> poss, std::set<Pos> &antinodes) {
 	if (poss.size() < 2)
 		return;
@@ -58,40 +81,29 @@ void count_validnodes(std::span<Pos> poss, std::vector<Pos> &antinodes) {
 	auto a = poss.front();
 	auto check = poss.subspan(1);
 	for (auto b : check) {
-		auto [aa, bb] = calc_antis(a, b);
+		auto antis = calc_antis(a, b, limit_antis);
 
-		if (in_bounds(aa)) {
-			if (std::find_if(antinodes.begin(), antinodes.end(), [&aa](auto &bb) {
-					return aa.x == bb.x && aa.y == bb.y;
-				}) == std::end(antinodes))
-			{
-				antinodes.push_back(aa);
-				std::cout << aa.x << "," << aa.y << "\n";
+		for (auto aa : antis) {
+			if (in_bounds(aa)) {
+				if (std::find_if(antinodes.begin(), antinodes.end(), [&aa](auto &bb) {
+						return aa.x == bb.x && aa.y == bb.y;
+					}) == std::end(antinodes))
+				{
+					antinodes.push_back(aa);
+					std::cout << aa.x << "," << aa.y << "\n";
+				}
+				// auto [_, unique] = antinodes.insert(aa);
+				// if (!unique)
+				// 	std::cout << aa.x << "," << aa.y << "\n";
 			}
-			// auto [_, unique] = antinodes.insert(aa);
-			// if (!unique)
-			// 	std::cout << aa.x << "," << aa.y << "\n";
-		}
-		if (in_bounds(bb)) {
-			if (std::find_if(antinodes.begin(), antinodes.end(), [&bb](auto &aa) {
-					return aa.x == bb.x && aa.y == bb.y;
-				}) == std::end(antinodes))
-			{
-				antinodes.push_back(bb);
-				std::cout << bb.x << "," << bb.y << "\n";
-			}
-			// antinodes.insert(bb);
-			// auto [_, unique] = antinodes.insert(aa);
-			// if (!unique)
-			// 	std::cout << bb.x << "," << bb.y << "\n";
 		}
 	}
-	count_validnodes(check, antinodes);
+	count_validnodes(check, antinodes, limit_antis);
 }
 
 int main(int argc, char *argv[]) {
 
-	auto nts = parse(argv[1]);
+	const auto nts = parse(argv[1]);
 
 	// for (auto nt : nts) {
 	// 	std::cout << nt.first << "@ ";
@@ -100,18 +112,55 @@ int main(int argc, char *argv[]) {
 	// 	std::cout << "\n";
 	// }
 	// std::set<Pos> antinodes;
-	std::vector<Pos> antinodes;
-	for (auto [chr, poss] : nts) {
-		count_validnodes(poss, antinodes);
-	}
+	{
+		std::vector<Pos> antinodes;
+		for (auto [chr, poss] : nts) {
+			count_validnodes(poss, antinodes, true);
+		}
 
-	std::cout << "Part 1: " << antinodes.size() << "\n";
+		std::cout << "Part 1: " << antinodes.size() << "\n";
+	}
 	//299
 
+	{
+		std::vector<Pos> antinodes;
+		for (auto [chr, poss] : nts) {
+			count_validnodes(poss, antinodes, false);
+		}
+
+		print_grid(antinodes, nts);
+		std::cout << "Part 2: " << antinodes.size() << "\n";
+		//>912
+	}
 	// std::cout << "Part 2: " << sum2 << "\n";
-	//59002246504791
 
 	//>242? <305
 
 	return 0;
+}
+
+void print_grid(std::vector<Pos> antinodes, std::map<char, std::vector<Pos>> map) {
+	std::vector<std::vector<char>> grid;
+
+	grid.resize(MAX.y);
+	for (auto &line : grid) {
+		line.resize(MAX.x, '.');
+	}
+
+	for (auto anti : antinodes) {
+		grid[anti.y][anti.x] = '#';
+	}
+
+	for (auto [freq, ant] : map) {
+		for (auto an : ant) {
+			grid[an.y][an.x] = freq;
+		}
+	}
+	for (auto y = 0; y < MAX.y; y++) {
+		for (auto x = 0; x < MAX.x; x++) {
+			std::cout << grid[y][x];
+		}
+
+		std::cout << "\n";
+	}
 }
