@@ -22,8 +22,7 @@ long calc(long a, long b, Op op) {
 	else if (op == Op::Plus)
 		return a + b;
 	else if (op == Op::Concat) {
-		auto str = std::to_string(a) + std::to_string(b);
-		return stol(str);
+		return a * std::pow(10, int(std::log10(b)) + 1) + b;
 	}
 	return 0; //error
 }
