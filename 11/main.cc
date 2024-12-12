@@ -1,9 +1,33 @@
-#include <cmath>
-#include <deque>
 #include <fstream>
 #include <iostream>
+#include <map>
+#include <numeric>
 #include <ranges>
 #include <string>
+#include <vector>
+
+using Stones = std::map<long, long>;
+
+void print_stones(Stones stones);
+
+Stones parse(std::string filename) {
+	std::ifstream ifs(std::string{filename});
+	std::string line(std::istreambuf_iterator<char>{ifs}, {});
+
+	auto nums = line									 //
+			  | std::views::split(' ')					 // split on spaces
+			  | std::views::transform([](auto &&range) { // convert to int
+					return std::stol(std::string{range.begin(), range.end()});
+				});
+
+	std::vector<long> stonelist(nums.begin(), nums.end());
+
+	Stones stones;
+	for (auto stone : stonelist)
+		stones.insert({stone, 1});
+
+	return stones;
+}
 
 constexpr unsigned num_digits(long long x) {
 	unsigned digs = 0;
@@ -14,10 +38,11 @@ constexpr unsigned num_digits(long long x) {
 	return digs;
 }
 
-constexpr long pow10(unsigned x) {
+// using this instead of std::pow(10,x) so `split()` can be constexpr in gcc-14
+constexpr long pow10(long x) {
 	long tens = 1;
 	while (x--)
-		tens *= 10ULL;
+		tens *= 10;
 	return tens;
 }
 
@@ -33,35 +58,30 @@ constexpr std::pair<long, long> split(long x) {
 	}
 }
 
-constexpr std::deque<long> blink(std::deque<long> stones) {
-	std::deque<long> next;
+constexpr void increment(long x, long num, Stones &stones) {
+	if (stones.contains(x))
+		stones[x] = stones[x] + num;
+	else
+		stones[x] = num;
+}
+
+constexpr Stones blink(Stones stones) {
+	Stones next;
 
 	for (auto const &stone : stones) {
-		if (stone == 0)
-			next.push_back(1);
-		else if (auto [a, b] = split(stone); a != -1) {
-			next.push_back(a);
-			next.push_back(b);
+		if (stone.first == 0) {
+			increment(1, stone.second, next);
+
+		} else if (auto [a, b] = split(stone.first); a != -1) {
+			increment(a, stone.second, next);
+			increment(b, stone.second, next);
+
 		} else {
-			next.push_back(stone * 2024);
+			increment(stone.first * 2024, stone.second, next);
 		}
 	}
 
 	return next;
-}
-
-std::deque<long> parse(std::string filename) {
-	std::ifstream ifs(std::string{filename});
-	std::string line(std::istreambuf_iterator<char>{ifs}, {});
-
-	auto nums = line									 //
-			  | std::views::split(' ')					 // split on spaces
-			  | std::views::transform([](auto &&range) { // convert to int
-					return std::stol(std::string{range.begin(), range.end()});
-				});
-
-	std::deque<long> stones(nums.begin(), nums.end());
-	return stones;
 }
 
 int main(int argc, char *argv[]) {
@@ -69,18 +89,23 @@ int main(int argc, char *argv[]) {
 
 	for (auto i = 0; i < 25; i++) {
 		stones = blink(stones);
-		std::cout << "[" << i << "] " << stones.size() << "\n";
 	}
 
-	std::cout << "Part 1: " << stones.size() << "\n";
-	//20219
+	auto total =
+		std::accumulate(stones.begin(), stones.end(), 0UL, [](unsigned long sum, auto &x) { return sum + x.second; });
+
+	std::cout << "Part 1: " << total << "\n";
+	// 202019
 
 	for (auto i = 25; i < 75; i++) {
 		stones = blink(stones);
-		std::cout << "[" << i << "] " << stones.size() << "\n";
 	}
 
-	std::cout << "Part 2: " << stones.size() << "\n";
+	auto total2 =
+		std::accumulate(stones.begin(), stones.end(), 0UL, [](unsigned long sum, auto &x) { return sum + x.second; });
+
+	std::cout << "Part 2: " << total2 << "\n";
+	//239321955280205
 
 	return 0;
 }
@@ -99,18 +124,18 @@ static_assert(num_digits(45) == 2);
 static_assert(num_digits(457) == 3);
 static_assert(num_digits(1234) == 4);
 
-// static_assert(blink(std::vector<long>{125, 17}) == std::vector<long>{253000, 1, 7});
+// std::map is not constexpr :(
+// static_assert(blink(Stones{{0, 1}}) == Stones{{1, 1}});
+// static_assert(blink(Stones{{1, 1}}) == Stones{{2048, 1}});
+// static_assert(blink(Stones{{2048, 1}}) == Stones{{20, 1}, {48, 1}});
+// static_assert(blink(Stones{{2048, 2}}) == Stones{{20, 2}, {48, 2}});
 
-// static_assert(blink(std::vector<long>{253000, 1, 7}) == std::vector<long>{253, 0, 2024, 14168});
-
-// static_assert(blink(std::vector<long>{253, 0, 2024, 14168}) == std::vector<long>{512072, 1, 20, 24, 28676032});
-
-// static_assert(blink(std::vector<long>{512072, 1, 20, 24, 28676032}) ==
-// 			  std::vector<long>{512, 72, 2024, 2, 0, 2, 4, 2867, 6032});
-
-// static_assert(blink(std::vector<long>{512, 72, 2024, 2, 0, 2, 4, 2867, 6032}) ==
-// 			  std::vector<long>{1036288, 7, 2, 20, 24, 4048, 1, 4048, 8096, 28, 67, 60, 32});
-
-// static_assert(blink(std::vector<long>{1036288, 7, 2, 20, 24, 4048, 1, 4048, 8096, 28, 67, 60, 32}) ==
-// 			  std::vector<long>{2097446912, 14168, 4048, 2, 0, 2, 4, 40, 48, 2024, 40,
-// 								48,			80,	   96,	 2, 8, 6, 7, 6,	 0,	 3,	   2});
+void print_stones(Stones stones) {
+	for (auto const &s : stones) {
+		std::cout << "" << s.first << "";
+		if (s.second > 1)
+			std::cout << "x" << s.second;
+		std::cout << " ";
+	}
+	std::cout << "\n";
+}
