@@ -1,16 +1,15 @@
-// #include "test.hh"
 #include "input.hh"
 #include "vec.hh"
 #include <iostream>
 #include <span>
 
-RatVec solve(Vec A, Vec B, Vec prize) {
+constexpr RatVec solve(Vec A, Vec B, Vec prize) {
 	auto det = A.x * B.y - A.y * B.x;
 
 	return {{(prize.x * B.y - prize.y * B.x), (prize.y * A.x - prize.x * A.y)}, {det, det}};
 }
 
-long calc_tokens(std::span<const Input> input) {
+constexpr long calc_tokens(std::span<const Input> input) {
 	long tokens = 0;
 
 	for (auto const &in : input) {
@@ -26,6 +25,15 @@ long calc_tokens(std::span<const Input> input) {
 
 	return tokens;
 }
+
+constexpr std::array test_input = {
+	Input{{94, 34}, {22, 67}, {8400, 5400}},
+	Input{{26, 66}, {67, 21}, {12748, 12176}},
+	Input{{17, 86}, {84, 37}, {7870, 6450}},
+	Input{{69, 23}, {27, 71}, {18641, 10279}},
+};
+
+static_assert(calc_tokens(test_input) == 480);
 
 int main(int argc, char *argv[]) {
 
