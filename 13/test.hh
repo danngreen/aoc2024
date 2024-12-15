@@ -7,3 +7,8 @@ constexpr std::array input = {
 	Input{{17, 86}, {84, 37}, {7870, 6450}},
 	Input{{69, 23}, {27, 71}, {18641, 10279}},
 };
+
+// Parse input:
+// %s/Button A: X+\(\d\+\), Y+\(\d\+\)/Input{{\1, \2}, /
+// %s/Button B: X+\(\d\+\), Y+\(\d\+\)/{\1, \2}, /
+// %s/Prize: X=\(\d\+\), Y=\(\d\+\)/{\1, \2}}, /
