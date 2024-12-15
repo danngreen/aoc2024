@@ -2,6 +2,7 @@
 #include "vec.hh"
 #include <iostream>
 #include <span>
+#include <vector>
 
 constexpr RatVec solve(Vec A, Vec B, Vec prize) {
 	auto det = A.x * B.y - A.y * B.x;
@@ -26,6 +27,25 @@ constexpr long calc_tokens(std::span<const Input> input) {
 	return tokens;
 }
 
+constexpr auto add_ten_trillion = [](std::span<const Input> input) {
+	std::vector<Input> input2;
+	input2.resize(input.size());
+	std::copy(input.begin(), input.end(), input2.begin());
+	for (auto &i : input2) {
+		i.prize.x += 10000000000000;
+		i.prize.y += 10000000000000;
+	}
+	return input2;
+};
+
+// Part 1:
+static_assert(calc_tokens(input) == 40369);
+
+// Part 2:
+static_assert(calc_tokens(add_ten_trillion(input)) == 72587986598368);
+
+/// Test input:
+
 constexpr std::array test_input = {
 	Input{{94, 34}, {22, 67}, {8400, 5400}},
 	Input{{26, 66}, {67, 21}, {12748, 12176}},
@@ -36,20 +56,7 @@ constexpr std::array test_input = {
 static_assert(calc_tokens(test_input) == 480);
 
 int main(int argc, char *argv[]) {
-
-	auto tokens = calc_tokens(input);
-	std::cout << "Part 1: " << tokens << "\n";
-	// 40369
-
-	auto input2 = input;
-	for (auto &in : input2) {
-		in.prize.x += 10000000000000;
-		in.prize.y += 10000000000000;
-	}
-
-	auto tokens2 = calc_tokens(input2);
-	std::cout << "Part 2: " << tokens2 << "\n";
-	// 72587986598368
-
+	std::cout << "Part 1: " << calc_tokens(input) << "\n";
+	std::cout << "Part 2: " << calc_tokens(add_ten_trillion(input)) << "\n";
 	return 0;
 }
