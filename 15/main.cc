@@ -20,8 +20,15 @@ struct Vec {
 	}
 };
 
-enum Dir { E, S, W, N };
+enum Dir { E, S, W, N, None };
 constexpr std::array<Vec, 4> Dirs{{{1, 0}, {0, 1}, {-1, 0}, {0, -1}}};
+
+constexpr Dir opposing(Dir b) {
+	return Dir(((int)b + 2) % 4);
+}
+constexpr bool parallel(Dir a, Dir b) {
+	return (a == b) || (a == opposing(b));
+}
 
 struct State {
 	Vec pos;
@@ -30,7 +37,7 @@ struct State {
 };
 
 std::vector<unsigned> run_paths(State start, Vec end) {
-	std::vector<std::vector<bool>> visited(input.front().size(), std::vector<bool>(input.size(), 0));
+	std::vector<std::vector<Dir>> visited(input.front().size(), std::vector<Dir>(input.size(), Dir::None));
 
 	std::vector<unsigned> scores{};
 
@@ -49,24 +56,29 @@ std::vector<unsigned> run_paths(State start, Vec end) {
 			continue;
 		}
 
-		if (visited[cur.pos.y][cur.pos.x])
+		// Allow visiting the same tile twice if we are heading in cross direction
+		// TODO: would it make sense to allow a lower-score state to visit an already visited tile?
+		if (parallel(visited[cur.pos.y][cur.pos.x], cur.dir))
 			continue;
-		visited[cur.pos.y][cur.pos.x] = true;
 
-		for (auto next_dir : {N, S, W, E}) {
-			// auto next_dir = Dir((cur.dir + dir) % 4);
-			auto next_pos = cur.pos + Dirs[next_dir];
+		visited[cur.pos.y][cur.pos.x] = cur.dir;
+
+		for (auto dir : {E, S, W, N}) {
+			// Don't allow U-turns
+			if (dir == opposing(cur.dir))
+				continue;
+
+			auto next_pos = cur.pos + Dirs[dir];
 
 			if (input[next_pos.y][next_pos.x] != '#') {
-
-				// try current dir next:
-				if (next_dir == cur.dir) {
-					branches.push_front(State{next_pos, next_dir, cur.score + 1});
+				// Prioritize staying on the current path
+				// This weeds out an edge case where we go the "long" way
+				// around a loop
+				if (dir == cur.dir) {
+					branches.push_front(State{next_pos, dir, cur.score + 1});
 				} else {
-					branches.push_back(State{next_pos, next_dir, cur.score + 1001});
+					branches.push_back(State{next_pos, dir, cur.score + 1001});
 				}
-				// auto next_score = cur.score + ((next_dir == cur.dir) ? 1 : 1001);
-				// branches.push_back(State{next_pos, next_dir, next_score});
 			}
 		}
 	}
@@ -80,9 +92,9 @@ int main(int argc, char *argv[]) {
 	auto score = run_paths(start, end);
 
 	std::cout << "Part 1: " << *std::ranges::min_element(score) << "\n";
-	// 92440 too high
+	// 92432
 
-	// std::cout << "Part 2: " << 7502 << "\n";
+	// std::cout << "Part 2: " << *std::ranges::min_element(score) << "\n";
 
 	return 0;
 }
