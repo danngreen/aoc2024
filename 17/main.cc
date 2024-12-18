@@ -1,6 +1,9 @@
 #include "input.hh"
 #include "regs.hh"
+#include <algorithm>
+#include <numeric>
 #include <print>
+#include <ranges>
 #include <span>
 
 constexpr int combo(unsigned operand, Registers const &regs) {
@@ -35,15 +38,15 @@ constexpr Registers process(Instruction inst, Registers r) {
 	return r;
 }
 
-constexpr uint64_t run(std::span<const Instruction> prog, Registers init_regs) {
-	uint64_t output{0};
+constexpr std::vector<int> run(std::span<const Instruction> prog, Registers init_regs) {
+	std::vector<int> output;
 
 	Registers regs = init_regs;
 
 	while (regs.SP < prog.size()) {
 		regs = process(prog[regs.SP], regs);
 		if (regs.OUT >= 0) {
-			output = (output << 4) | (regs.OUT & 0b111);
+			output.push_back(regs.OUT & 0b111);
 			// std::print(" => Out: {}", regs.OUT & 0b111);
 		}
 		// std::println("");
@@ -61,15 +64,54 @@ constexpr std::array<Instruction, N / 2> parse(std::array<int, N> raw_prog) {
 	return prog;
 }
 
+enum class Result { NoMatch, Found, Solved };
+constexpr Result try_bits(long testA, std::span<const Instruction> prog, std::span<const int> raw_prog) {
+	auto out = run(prog, {.A = testA});
+
+	if (std::equal(out.rbegin(), out.rend(), raw_program.rbegin())) {
+		if (out.size() == raw_program.size())
+			return Result::Solved;
+
+		return Result::Found;
+	}
+	return Result::NoMatch;
+}
+
 int main(int argc, char *argv[]) {
 	// Part 1:
-	static_assert(run(parse(raw_program), initial_regs) == 0x715240761);
-	std::println("{:x}", run(parse(raw_program), initial_regs));
+	static_assert(run(parse(raw_program), initial_regs) == std::vector{7, 1, 5, 2, 4, 0, 7, 6, 1});
+	std::println("Part 1:\n{}", run(parse(raw_program), initial_regs));
 
 	// Part 2: In progress
 	auto prog = parse(raw_program);
-	auto output2 = run(prog, {.A = 0b001000000000000000000000000000000000000000000000});
-	std::println("0x{:x}", output2);
+
+	long A = 0;
+	bool solved = false;
+
+	// BFS:
+	std::vector<long> solutions;
+
+	std::queue<long> As;
+	As.push(0);
+	while (!As.empty()) {
+		auto A = As.front();
+		As.pop();
+
+		for (unsigned test = 0; test < 8; test++) {
+			auto testA = A << 3 | test;
+			auto result = try_bits(testA, prog, raw_program);
+			if (result == Result::Solved) {
+				solutions.push_back(testA);
+			}
+			if (result == Result::Found) {
+				As.push(testA);
+			}
+		}
+	}
+
+	auto min_solution = std::min_element(solutions.begin(), solutions.end());
+	std::println("Part 2: Minimum value for A = {}", *min_solution);
+
 	return 0;
 }
 
@@ -83,7 +125,7 @@ static_assert(process({OpCode::bxc, 7}, {.B = 2024, .C = 43690}).B == 44354);
 constexpr auto raw_test1 = std::array<int, 6>{0, 1, 5, 4, 3, 0};
 constexpr auto test1 = std::array<Instruction, 3>{{{OpCode::adv, 1}, {OpCode::out, 4}, {OpCode::jnz, 0}}};
 static_assert(parse(raw_test1) == test1);
-static_assert(run(test1, {.A = 2024}) == 0x42567777310);
+static_assert(run(test1, {.A = 2024}) == std::vector{4, 2, 5, 6, 7, 7, 7, 7, 3, 1, 0});
 
 constexpr auto raw_test2 = std::array<int, 6>{0, 1, 5, 4, 3, 0};
-static_assert(run(parse(raw_test2), {.A = 729}) == 0x4635635210);
+static_assert(run(parse(raw_test2), {.A = 729}) == std::vector{4, 6, 3, 5, 6, 3, 5, 2, 1, 0});
