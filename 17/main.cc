@@ -1,10 +1,9 @@
 #include "input.hh"
 #include "regs.hh"
 #include <algorithm>
-#include <numeric>
 #include <print>
-#include <ranges>
 #include <span>
+#include <vector>
 
 constexpr int combo(unsigned operand, Registers const &regs) {
 	if (operand <= 3)
@@ -34,7 +33,6 @@ constexpr Registers process(Instruction inst, Registers r) {
 		case OpCode::cdv: { r.C = r.A >> combo(op, r);   r.SP++; } break;
 			// clang-format on
 	}
-	// std::print("[{}]: {},{} => A:{:b} B:{:b} C:{:b}", r.SP, (int)inst.opcode, inst.operand, r.A, r.B, r.C);
 	return r;
 }
 
@@ -47,9 +45,7 @@ constexpr std::vector<int> run(std::span<const Instruction> prog, Registers init
 		regs = process(prog[regs.SP], regs);
 		if (regs.OUT >= 0) {
 			output.push_back(regs.OUT & 0b111);
-			// std::print(" => Out: {}", regs.OUT & 0b111);
 		}
-		// std::println("");
 	}
 
 	return output;
@@ -77,40 +73,40 @@ constexpr Result try_bits(long testA, std::span<const Instruction> prog, std::sp
 	return Result::NoMatch;
 }
 
+constexpr long find_minimum_A(std::span<const Instruction> prog) {
+	std::vector<long> solutions;
+	std::vector<long> As;
+	As.push_back(0);
+
+	while (!As.empty()) {
+		auto A = As.back();
+		As.pop_back();
+
+		for (unsigned bits = 0; bits < 8; bits++) {
+			auto testA = A << 3 | bits;
+
+			auto result = try_bits(testA, prog, raw_program);
+
+			if (result == Result::Solved) {
+				solutions.push_back(testA);
+			} else if (result == Result::Found) {
+				As.push_back(testA);
+			}
+		}
+	}
+
+	return *std::min_element(solutions.begin(), solutions.end());
+}
+
 int main(int argc, char *argv[]) {
 	// Part 1:
 	static_assert(run(parse(raw_program), initial_regs) == std::vector{7, 1, 5, 2, 4, 0, 7, 6, 1});
 	std::println("Part 1:\n{}", run(parse(raw_program), initial_regs));
 
-	// Part 2: In progress
-	auto prog = parse(raw_program);
-
-	long A = 0;
-	bool solved = false;
-
-	// BFS:
-	std::vector<long> solutions;
-
-	std::queue<long> As;
-	As.push(0);
-	while (!As.empty()) {
-		auto A = As.front();
-		As.pop();
-
-		for (unsigned test = 0; test < 8; test++) {
-			auto testA = A << 3 | test;
-			auto result = try_bits(testA, prog, raw_program);
-			if (result == Result::Solved) {
-				solutions.push_back(testA);
-			}
-			if (result == Result::Found) {
-				As.push(testA);
-			}
-		}
-	}
-
-	auto min_solution = std::min_element(solutions.begin(), solutions.end());
-	std::println("Part 2: Minimum value for A = {}", *min_solution);
+	// Part 2: BFS
+	// Need to set -fconstexpr-steps > 10 million for clang, or something similar for gcc
+	static_assert(find_minimum_A(parse(raw_program)) == 37222273957364);
+	std::println("Part 2: Minimum value for A = {}", find_minimum_A(parse(raw_program)));
 
 	return 0;
 }

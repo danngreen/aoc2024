@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.22)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# set(CMAKE_BUILD_TYPE "RelWithDebInfo")
-set(CMAKE_BUILD_TYPE "Debug")
+set(CMAKE_BUILD_TYPE "RelWithDebInfo")
+# set(CMAKE_BUILD_TYPE "Debug")
 
 project(
   AOC2024
@@ -11,8 +11,11 @@ project(
   LANGUAGES CXX 
 )
 
-set(CMAKE_CXX_STANDARD 26)
+set(CMAKE_CXX_STANDARD 23)
 
 add_executable(AOC
     main.cc
 )
+
+# For Apple clang-16:
+target_compile_options(AOC PRIVATE -fconstexpr-steps=10000000)
